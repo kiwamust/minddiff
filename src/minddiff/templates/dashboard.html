@@ -1,0 +1,161 @@
+{% extends "base.html" %}
+{% block title %}ダッシュボード — MindDiff{% endblock %}
+
+{% block nav_right %}
+<div class="flex items-center gap-3">
+  <span class="text-xs font-mono text-brand-muted">{{ team.name }}</span>
+  <span class="w-px h-4 bg-surface-border"></span>
+  <span class="text-sm text-brand font-medium">{{ member.display_name }}</span>
+  {% if member.role == 'pm' %}
+  <span class="text-[10px] font-mono font-medium px-1.5 py-0.5 rounded bg-brand-light text-brand-accent uppercase tracking-wider">pm</span>
+  {% endif %}
+</div>
+{% endblock %}
+
+{% block content %}
+{# Page Title #}
+<div class="mb-8 anim-fade-up">
+  <h1 class="font-display text-2xl font-bold text-brand">{{ team.name }}</h1>
+</div>
+
+{% if current_cycle %}
+{# Current Cycle Hero Card #}
+<div class="card p-6 sm:p-8 mb-6 anim-fade-up stagger-1">
+  <div class="flex items-start justify-between gap-4 mb-5">
+    <div>
+      <div class="flex items-center gap-3 mb-1">
+        <h2 class="font-mono text-lg font-medium text-brand">
+          Cycle #{{ current_cycle.cycle_number }}
+        </h2>
+        {% if current_cycle.status == 'open' %}
+        <span class="text-[10px] font-mono font-medium px-2 py-0.5 rounded-full bg-align-surface text-align border border-align/20 uppercase tracking-wider">
+          受付中
+        </span>
+        {% elif current_cycle.status == 'closed' %}
+        <span class="text-[10px] font-mono font-medium px-2 py-0.5 rounded-full bg-diverge-surface text-diverge border border-diverge/20 uppercase tracking-wider">
+          締切済
+        </span>
+        {% else %}
+        <span class="text-[10px] font-mono font-medium px-2 py-0.5 rounded-full bg-brand-light text-brand-accent border border-brand-accent/20 uppercase tracking-wider">
+          レポート済
+        </span>
+        {% endif %}
+      </div>
+      <p class="text-xs text-brand-muted font-mono">
+        {{ current_cycle.start_date.strftime('%Y/%m/%d') }} — {{ current_cycle.end_date.strftime('%Y/%m/%d') }}
+      </p>
+    </div>
+  </div>
+
+  {# Action Buttons #}
+  <div class="flex flex-wrap gap-3 mb-6">
+    {% if current_cycle.status == 'open' %}
+    <a href="/input/{{ current_cycle.id }}"
+       class="inline-flex items-center gap-2 bg-brand text-white py-2.5 px-5 rounded-lg text-sm font-medium
+              hover:bg-brand-accent active:scale-[0.98] transition-all duration-150">
+      <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
+      </svg>
+      回答する
+    </a>
+    {% endif %}
+
+    {% if current_cycle.status == 'reported' or report %}
+    <a href="/report/{{ current_cycle.id }}"
+       class="inline-flex items-center gap-2 bg-white border border-surface-border text-brand py-2.5 px-5 rounded-lg text-sm font-medium
+              hover:border-brand-accent hover:text-brand-accent transition-all duration-150">
+      <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/>
+      </svg>
+      レポートを見る
+    </a>
+    {% endif %}
+
+    {% if member.role == 'pm' and current_cycle.status == 'open' %}
+    <button hx-post="/cycles/{{ current_cycle.id }}/close" hx-swap="none"
+      hx-on::after-request="window.location.reload()"
+      class="inline-flex items-center gap-2 text-sm text-brand-muted hover:text-diverge transition py-2.5 px-4">
+      <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/>
+      </svg>
+      サイクルを締め切る
+    </button>
+    {% endif %}
+  </div>
+
+  {# Member Status Panel (htmx loaded) #}
+  <div>
+    <h3 class="text-xs font-medium text-brand-muted uppercase tracking-wider mb-3">チームの回答状況</h3>
+    <div hx-get="/partials/status/{{ current_cycle.id }}" hx-trigger="load" hx-target="#status-panel" hx-swap="innerHTML">
+      <div id="status-panel">
+        <div class="flex items-center gap-2 text-sm text-brand-muted">
+          <svg class="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
+            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
+          </svg>
+          読み込み中...
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+{% else %}
+{# No Active Cycle #}
+<div class="card p-10 text-center anim-fade-up stagger-1">
+  <div class="text-brand-muted mb-2">
+    <svg class="w-10 h-10 mx-auto mb-3 opacity-40" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
+      <path stroke-linecap="round" stroke-linejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z"/>
+    </svg>
+    <p class="text-sm">アクティブなサイクルがありません</p>
+  </div>
+  {% if member.role == 'pm' %}
+  <form method="post" action="/new-cycle" class="mt-5">
+    <input type="hidden" name="team_id" value="{{ team.id }}">
+    <button type="submit"
+      class="inline-flex items-center gap-2 bg-brand text-white py-2.5 px-5 rounded-lg text-sm font-medium
+             hover:bg-brand-accent active:scale-[0.98] transition-all duration-150">
+      <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4"/>
+      </svg>
+      新しいサイクルを開始
+    </button>
+  </form>
+  {% endif %}
+</div>
+{% endif %}
+
+{# Past Cycles #}
+{% if cycles|length > 1 %}
+<div class="mt-10 anim-fade-up stagger-3">
+  <h2 class="text-xs font-medium text-brand-muted uppercase tracking-wider mb-4">過去のサイクル</h2>
+  <div class="space-y-2">
+    {% for cycle in cycles[1:] %}
+    <div class="card px-5 py-3.5 flex items-center justify-between group">
+      <div class="flex items-center gap-3">
+        <span class="font-mono text-sm font-medium text-brand">
+          #{{ cycle.cycle_number }}
+        </span>
+        <span class="text-xs text-brand-muted font-mono">
+          {{ cycle.start_date.strftime('%m/%d') }} — {{ cycle.end_date.strftime('%m/%d') }}
+        </span>
+      </div>
+      <div class="flex items-center gap-3">
+        {% if cycle.status == 'reported' %}
+        <span class="text-[10px] font-mono text-brand-accent/60">reported</span>
+        <a href="/report/{{ cycle.id }}"
+           class="text-xs font-medium text-brand-muted hover:text-brand-accent transition">
+          レポート →
+        </a>
+        {% elif cycle.status == 'closed' %}
+        <span class="text-[10px] font-mono text-diverge/60">closed</span>
+        {% else %}
+        <span class="text-[10px] font-mono text-align/60">open</span>
+        {% endif %}
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+</div>
+{% endif %}
+{% endblock %}

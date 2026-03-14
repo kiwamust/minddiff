@@ -1,0 +1,187 @@
+{% extends "base.html" %}
+{% block title %}回答入力 — Cycle #{{ cycle.cycle_number }} — MindDiff{% endblock %}
+
+{% block nav_right %}
+<span class="text-sm text-brand font-medium">{{ member.display_name }}</span>
+{% endblock %}
+
+{% block content %}
+<div class="mb-6 anim-fade-up">
+  <a href="/" class="text-xs font-medium text-brand-muted hover:text-brand-accent transition">
+    ← ダッシュボードに戻る
+  </a>
+</div>
+
+<div class="mb-8 anim-fade-up stagger-1">
+  <h1 class="font-display text-2xl font-bold text-brand mb-1">
+    Cycle #{{ cycle.cycle_number }}
+  </h1>
+  <p class="text-sm text-brand-muted">5つの問いに回答してください。下書きは自動保存されます。</p>
+</div>
+
+{# Progress Indicator #}
+<div class="flex items-center justify-center gap-0 mb-10 anim-fade-up stagger-2">
+  {% for i in range(1, 6) %}
+  <div id="progress-{{ i }}"
+    class="w-8 h-8 rounded-full border-2 flex items-center justify-center font-mono text-xs font-medium transition-all duration-300
+    {% if current_responses.get(i) %}border-brand-accent bg-brand-accent text-white{% else %}border-surface-border bg-white text-brand-muted{% endif %}">
+    {{ i }}
+  </div>
+  {% if i < 5 %}
+  <div class="w-6 sm:w-10 h-px bg-surface-border"></div>
+  {% endif %}
+  {% endfor %}
+</div>
+
+{% set dimensions = [
+  {"num": 1, "label": "目的理解", "question": "この1〜2週間で、チームとして最も達成すべきことは何ですか？ それはなぜですか？"},
+  {"num": 2, "label": "状況認識", "question": "今、最も順調に進んでいることと、最も遅れている・詰まっていることは何ですか？"},
+  {"num": 3, "label": "リスク認知", "question": "今、最も心配していることを2〜3つ挙げてください。"},
+  {"num": 4, "label": "合意事項", "question": "過去1〜2週間で、チームとして決まった（と自分が認識している）ことを挙げてください。"},
+  {"num": 5, "label": "優先順位", "question": "来週、自分が最も注力すべきことは何ですか？ また、チーム全体として最も注力すべきことは何ですか？"}
+] %}
+
+<form id="input-form" class="space-y-5">
+  {% for dim in dimensions %}
+  <div class="card p-5 sm:p-6 anim-fade-up stagger-{{ dim.num }}" id="card-{{ dim.num }}">
+    <div class="flex items-center gap-2.5 mb-3">
+      <span class="dim-badge bg-brand-light text-brand-accent">{{ dim.num }}</span>
+      <h2 class="text-sm font-bold text-brand">{{ dim.label }}</h2>
+      <span id="status-{{ dim.num }}" class="save-status text-xs font-mono text-brand-muted/0 ml-auto"></span>
+    </div>
+
+    <p class="text-sm text-brand-muted leading-relaxed mb-4">{{ dim.question }}</p>
+
+    {% if previous_responses and previous_responses[dim.num] %}
+    <details class="mb-4 group">
+      <summary class="text-[11px] font-medium text-brand-muted/60 cursor-pointer hover:text-brand-muted transition select-none">
+        前回の回答を参照
+      </summary>
+      <div class="mt-2 p-3 bg-surface-bg rounded-lg text-xs text-brand-muted leading-relaxed border border-surface-border/50">
+        {{ previous_responses[dim.num] }}
+      </div>
+    </details>
+    {% endif %}
+
+    <textarea
+      name="dim_{{ dim.num }}"
+      id="dim-{{ dim.num }}"
+      data-dim="{{ dim.num }}"
+      rows="4"
+      class="w-full border border-surface-border rounded-lg px-4 py-3 text-sm leading-relaxed
+             bg-surface-bg/30
+             focus:outline-none focus:ring-2 focus:ring-brand-accent/20 focus:border-brand-accent/40
+             placeholder:text-brand-muted/40
+             resize-y transition"
+      placeholder="自由に記述してください..."
+      hx-put="/responses/{{ cycle.id }}/{{ member.id }}"
+      hx-trigger="keyup changed delay:2s"
+      hx-vals='js:{"dimension": {{ dim.num }}, "content": document.getElementById("dim-{{ dim.num }}").value, "is_draft": true}'
+      hx-swap="none"
+    >{{ current_responses.get(dim.num, "") }}</textarea>
+  </div>
+  {% endfor %}
+
+  {# Submit Bar #}
+  <div class="flex items-center justify-between pt-4 anim-fade-up stagger-5">
+    <a href="/" class="text-sm text-brand-muted hover:text-brand transition">キャンセル</a>
+    <button type="button" id="submit-all"
+      class="inline-flex items-center gap-2 bg-brand text-white py-2.5 px-6 rounded-lg text-sm font-medium
+             hover:bg-brand-accent active:scale-[0.98]
+             disabled:opacity-50 disabled:cursor-not-allowed
+             transition-all duration-150"
+      onclick="submitAll()">
+      <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/>
+      </svg>
+      すべて提出する
+    </button>
+  </div>
+</form>
+{% endblock %}
+
+{% block scripts %}
+<script>
+// Auto-save status handling
+document.body.addEventListener('htmx:beforeRequest', function(evt) {
+  const elt = evt.detail.elt;
+  if (elt.tagName === 'TEXTAREA' && elt.dataset.dim) {
+    const s = document.getElementById('status-' + elt.dataset.dim);
+    s.textContent = '保存中...';
+    s.className = 'save-status text-xs font-mono text-brand-muted animate-pulse ml-auto';
+  }
+});
+
+document.body.addEventListener('htmx:afterRequest', function(evt) {
+  const elt = evt.detail.elt;
+  if (elt.tagName === 'TEXTAREA' && elt.dataset.dim) {
+    const dim = elt.dataset.dim;
+    const s = document.getElementById('status-' + dim);
+    if (evt.detail.successful) {
+      s.textContent = '✓ 保存済み';
+      s.className = 'save-status text-xs font-mono text-align ml-auto';
+      setTimeout(() => { s.style.opacity = '0.5'; }, 2500);
+    } else {
+      s.textContent = '保存失敗';
+      s.className = 'save-status text-xs font-mono text-critical ml-auto';
+    }
+    updateProgress();
+  }
+});
+
+function updateProgress() {
+  for (let i = 1; i <= 5; i++) {
+    const textarea = document.getElementById('dim-' + i);
+    const dot = document.getElementById('progress-' + i);
+    if (textarea.value.trim().length > 0) {
+      dot.className = 'w-8 h-8 rounded-full border-2 flex items-center justify-center font-mono text-xs font-medium transition-all duration-300 border-brand-accent bg-brand-accent text-white';
+    } else {
+      dot.className = 'w-8 h-8 rounded-full border-2 flex items-center justify-center font-mono text-xs font-medium transition-all duration-300 border-surface-border bg-white text-brand-muted';
+    }
+  }
+}
+
+async function submitAll() {
+  const btn = document.getElementById('submit-all');
+  const btnText = btn.innerHTML;
+  btn.disabled = true;
+  btn.innerHTML = '<svg class="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path></svg> 提出中...';
+
+  // Validate all fields
+  for (let dim = 1; dim <= 5; dim++) {
+    const content = document.getElementById('dim-' + dim).value.trim();
+    if (!content) {
+      const card = document.getElementById('card-' + dim);
+      card.style.boxShadow = '0 0 0 2px #DC2626';
+      card.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      setTimeout(() => { card.style.boxShadow = ''; }, 3000);
+      btn.disabled = false;
+      btn.innerHTML = btnText;
+      return;
+    }
+  }
+
+  // Submit all
+  let allOk = true;
+  for (let dim = 1; dim <= 5; dim++) {
+    const content = document.getElementById('dim-' + dim).value;
+    const resp = await fetch('/responses/{{ cycle.id }}/{{ member.id }}', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ dimension: dim, content: content, is_draft: false })
+    });
+    if (!resp.ok) allOk = false;
+  }
+
+  if (allOk) {
+    window.location.href = '/';
+  } else {
+    btn.disabled = false;
+    btn.innerHTML = btnText;
+  }
+}
+
+// Initialize progress on load
+document.addEventListener('DOMContentLoaded', updateProgress);
+</script>
+{% endblock %}

@@ -1,0 +1,77 @@
+{% extends "base.html" %}
+{% block title %}ログイン — MindDiff{% endblock %}
+
+{% block nav %}{% endblock %}
+
+{% block head %}
+<style>
+  .login-wrap {
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+    overflow: hidden;
+  }
+  .login-wrap::before,
+  .login-wrap::after {
+    content: '';
+    position: absolute;
+    border-radius: 50%;
+    filter: blur(80px);
+    pointer-events: none;
+  }
+  .login-wrap::before {
+    width: 420px; height: 420px;
+    background: #5046E5;
+    opacity: 0.08;
+    top: -120px; right: -80px;
+  }
+  .login-wrap::after {
+    width: 340px; height: 340px;
+    background: #0D9488;
+    opacity: 0.06;
+    bottom: -100px; left: -60px;
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="login-wrap">
+  <div class="card p-10 w-full max-w-sm anim-fade-up relative z-10">
+    <div class="text-center mb-8">
+      <h1 class="font-display text-3xl font-bold tracking-tight mb-2">
+        <span class="text-brand">Mind</span><span class="text-brand-accent">Diff</span>
+      </h1>
+      <p class="text-sm text-brand-muted">チームの認知地図を描く</p>
+    </div>
+
+    {% if error %}
+    <div class="bg-critical-surface border border-critical/20 text-critical text-sm px-4 py-3 rounded-lg mb-5 anim-fade-in">
+      {{ error }}
+    </div>
+    {% endif %}
+
+    <form method="post" action="/login" class="space-y-5">
+      <div>
+        <label for="token" class="block text-xs font-medium text-brand-muted mb-1.5 tracking-wide uppercase">
+          招待トークン
+        </label>
+        <input type="text" name="token" id="token" required autocomplete="off"
+          class="w-full border border-surface-border rounded-lg px-4 py-3 text-sm
+                 bg-surface-bg/50
+                 focus:outline-none focus:ring-2 focus:ring-brand-accent/30 focus:border-brand-accent
+                 placeholder:text-brand-muted/50
+                 transition"
+          placeholder="招待リンクのトークンを入力">
+      </div>
+      <button type="submit"
+        class="w-full bg-brand text-white py-3 px-4 rounded-lg text-sm font-medium
+               hover:bg-brand-accent active:scale-[0.98]
+               transition-all duration-150">
+        ログイン
+      </button>
+    </form>
+  </div>
+</div>
+{% endblock %}

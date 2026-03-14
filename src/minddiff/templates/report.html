@@ -1,0 +1,332 @@
+{% extends "base.html" %}
+{% block title %}レポート — Cycle #{{ cycle.cycle_number }} — MindDiff{% endblock %}
+
+{% block nav_right %}
+<span class="text-sm text-brand font-medium">{{ member.display_name }}</span>
+{% endblock %}
+
+{% block head %}
+<style>
+  .fracture-border {
+    border-left: 3px solid;
+    border-image: linear-gradient(180deg, #D97706 0%, #DC2626 100%) 1;
+  }
+  .fracture-border-low {
+    border-left: 3px solid #D97706;
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+{% set dim_labels = {1: "目的理解", 2: "状況認識", 3: "リスク認知", 4: "合意事項", 5: "優先順位"} %}
+
+<div class="mb-6 anim-fade-up">
+  <a href="/" class="text-xs font-medium text-brand-muted hover:text-brand-accent transition">
+    ← ダッシュボードに戻る
+  </a>
+</div>
+
+<div class="mb-10 anim-fade-up stagger-1">
+  <h1 class="font-display text-2xl font-bold text-brand mb-1">
+    Cycle #{{ cycle.cycle_number }} レポート
+  </h1>
+  <p class="text-xs text-brand-muted font-mono">
+    Generated {{ report.generated_at.strftime('%Y/%m/%d %H:%M') if report.generated_at else '' }}
+  </p>
+</div>
+
+{# ── Radar Chart (Hero) ── #}
+<div class="card p-6 sm:p-8 mb-10 anim-fade-up stagger-2">
+  <h2 class="font-display text-lg font-bold text-brand text-center mb-6">チーム認識マップ</h2>
+  <div class="flex justify-center">
+    <svg id="radar-chart" viewBox="0 0 300 310" class="w-full max-w-xs"></svg>
+  </div>
+  <div class="flex justify-center gap-6 mt-6 text-[11px] font-mono">
+    <span class="flex items-center gap-1.5">
+      <span class="w-2.5 h-2.5 rounded-full bg-align"></span> 70%+
+    </span>
+    <span class="flex items-center gap-1.5">
+      <span class="w-2.5 h-2.5 rounded-full bg-diverge"></span> 50–70%
+    </span>
+    <span class="flex items-center gap-1.5">
+      <span class="w-2.5 h-2.5 rounded-full bg-critical"></span> &lt;50%
+    </span>
+  </div>
+</div>
+
+{# ── Dimension Cards (Synthesis + Gauge + Divergences) ── #}
+{% for dim_key in ["1","2","3","4","5"] %}
+{% set score = alignment_scores.get(dim_key, alignment_scores.get("dim_" ~ dim_key, 0)) %}
+{% set synth = synthesis.get(dim_key, synthesis.get("dim_" ~ dim_key, "")) %}
+{% set divs = divergences.get(dim_key, divergences.get("dim_" ~ dim_key, [])) %}
+{% set score_pct = (score * 100)|int %}
+{% set gauge_color = '#DC2626' if score < 0.5 else '#D97706' if score < 0.7 else '#0D9488' %}
+
+<div class="card p-5 sm:p-6 mb-4 anim-fade-up stagger-{{ loop.index }}">
+  <div class="flex items-start gap-4 sm:gap-5">
+    {# Circular Gauge #}
+    <div class="shrink-0 pt-0.5">
+      <svg viewBox="0 0 36 36" class="w-14 h-14 gauge-svg" data-score="{{ score_pct }}">
+        <circle cx="18" cy="18" r="15.9155" fill="none" class="gauge-track" stroke-width="2.8"/>
+        <circle cx="18" cy="18" r="15.9155" fill="none" class="gauge-fill"
+          stroke="{{ gauge_color }}" stroke-width="2.8"
+          stroke-dasharray="0, 100"
+          data-target="{{ score_pct }}"
+          transform="rotate(-90 18 18)"/>
+        <text x="18" y="18.5" text-anchor="middle" dominant-baseline="central"
+          style="font-family: 'JetBrains Mono'; font-size: 7.5px; font-weight: 500; fill: #1A1A1A;">
+          {{ score_pct }}%
+        </text>
+      </svg>
+    </div>
+
+    {# Content #}
+    <div class="flex-1 min-w-0">
+      <div class="flex items-center gap-2 mb-2">
+        <span class="dim-badge bg-brand-light text-brand-accent">{{ dim_key }}</span>
+        <h3 class="text-sm font-bold text-brand">{{ dim_labels[dim_key|int] }}</h3>
+        {% if score < 0.5 %}
+        <span class="ml-auto text-[10px] font-mono font-medium px-2 py-0.5 rounded-full bg-critical-light text-critical">要注意</span>
+        {% elif score < 0.7 %}
+        <span class="ml-auto text-[10px] font-mono font-medium px-2 py-0.5 rounded-full bg-diverge-light text-diverge">注意</span>
+        {% else %}
+        <span class="ml-auto text-[10px] font-mono font-medium px-2 py-0.5 rounded-full bg-align-surface text-align border border-align/20">良好</span>
+        {% endif %}
+      </div>
+
+      {# Synthesis Summary #}
+      {% if synth is string %}
+      <p class="text-sm text-gray-700 leading-relaxed">{{ synth }}</p>
+      {% else %}
+      <p class="text-sm text-gray-700 leading-relaxed">{{ synth.get("summary", "") }}</p>
+
+      {# Common Themes #}
+      {% if synth.get("common_themes") %}
+      <div class="flex flex-wrap gap-1.5 mt-3">
+        {% for theme in synth.common_themes %}
+        <span class="text-[11px] px-2 py-0.5 bg-surface-dim rounded-full text-brand-muted">{{ theme }}</span>
+        {% endfor %}
+      </div>
+      {% endif %}
+
+      {# Mention Distribution #}
+      {% if synth.get("mention_distribution") %}
+      <div class="mt-3 flex flex-wrap gap-x-4 gap-y-1">
+        {% for topic, count in synth.mention_distribution.items() %}
+        <span class="text-[11px] font-mono text-brand-muted">{{ topic }} <span class="text-brand-accent">{{ count }}</span></span>
+        {% endfor %}
+      </div>
+      {% endif %}
+
+      {# Notable Expressions #}
+      {% if synth.get("notable_expressions") %}
+      <div class="mt-3 space-y-1">
+        {% for expr in synth.notable_expressions %}
+        <p class="text-xs text-brand-muted italic pl-3 border-l-2 border-surface-border">"{{ expr }}"</p>
+        {% endfor %}
+      </div>
+      {% endif %}
+      {% endif %}
+
+      {# Divergences #}
+      {% if divs %}
+      <div class="mt-5 space-y-3">
+        {% if divs is mapping %}
+        {# Single divergence object #}
+        <div class="p-3.5 bg-diverge-surface rounded-lg fracture-border-low">
+          <div class="flex items-start gap-2 mb-2">
+            <span class="text-sm font-medium text-brand leading-snug">{{ divs.get("concept", "") }}</span>
+            {% if divs.get("confidence") %}
+            <span class="shrink-0 text-[10px] font-mono font-medium px-1.5 py-0.5 rounded
+              {% if divs.confidence == '高' %}bg-critical-light text-critical
+              {% elif divs.confidence == '中' %}bg-diverge-light text-diverge
+              {% else %}bg-surface-dim text-brand-muted{% endif %}">
+              {{ divs.confidence }}
+            </span>
+            {% endif %}
+          </div>
+          {% if divs.get("evidence") %}
+          <div class="space-y-1.5 mt-2">
+            {% for e in divs.evidence %}
+            <p class="text-xs text-gray-600 pl-3 border-l-2 border-diverge/30">{{ e }}</p>
+            {% endfor %}
+          </div>
+          {% endif %}
+          {% if divs.get("recommended_action") %}
+          <p class="text-xs font-medium text-brand-accent mt-3">→ {{ divs.recommended_action }}</p>
+          {% endif %}
+        </div>
+        {% else %}
+        {# List of divergences #}
+        {% for div in divs %}
+        <div class="p-3.5 rounded-lg
+          {% if div is mapping and div.get('confidence') == '高' %}bg-critical-surface fracture-border
+          {% else %}bg-diverge-surface fracture-border-low{% endif %}">
+          <div class="flex items-start gap-2 mb-2">
+            {% if div is mapping %}
+            <span class="text-sm font-medium text-brand leading-snug">{{ div.get("concept", div) }}</span>
+            {% if div.get("confidence") %}
+            <span class="shrink-0 text-[10px] font-mono font-medium px-1.5 py-0.5 rounded
+              {% if div.confidence == '高' %}bg-critical-light text-critical
+              {% elif div.confidence == '中' %}bg-diverge-light text-diverge
+              {% else %}bg-surface-dim text-brand-muted{% endif %}">
+              {{ div.confidence }}
+            </span>
+            {% endif %}
+            {% else %}
+            <span class="text-sm font-medium text-brand leading-snug">{{ div }}</span>
+            {% endif %}
+          </div>
+          {% if div is mapping and div.get("evidence") %}
+          <div class="space-y-1.5 mt-2">
+            {% for e in div.evidence %}
+            <p class="text-xs text-gray-600 pl-3 border-l-2 border-diverge/30">{{ e }}</p>
+            {% endfor %}
+          </div>
+          {% endif %}
+          {% if div is mapping and div.get("recommended_action") %}
+          <p class="text-xs font-medium text-brand-accent mt-3">→ {{ div.recommended_action }}</p>
+          {% endif %}
+        </div>
+        {% endfor %}
+        {% endif %}
+      </div>
+      {% else %}
+      {# No divergences #}
+      <div class="mt-4 flex items-center gap-2 text-xs text-align">
+        <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/>
+        </svg>
+        <span>大きな乖離は検出されませんでした</span>
+      </div>
+      {% endif %}
+    </div>
+  </div>
+</div>
+{% endfor %}
+
+{# PM: Regenerate Report #}
+{% if member.role == 'pm' %}
+<div class="mt-10 text-center anim-fade-up">
+  <button id="regen-btn"
+    hx-post="/reports/{{ cycle.id }}/generate"
+    hx-swap="none"
+    class="text-xs font-medium text-brand-muted hover:text-brand-accent transition"
+    onclick="this.textContent='生成中...'; this.style.pointerEvents='none';"
+    hx-on::after-request="window.location.reload()">
+    レポートを再生成する
+  </button>
+</div>
+{% endif %}
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+  // ── Animate gauge fills ──
+  document.querySelectorAll('.gauge-fill').forEach(function(el) {
+    var target = el.dataset.target;
+    requestAnimationFrame(function() {
+      requestAnimationFrame(function() {
+        el.setAttribute('stroke-dasharray', target + ', 100');
+      });
+    });
+  });
+
+  // ── Radar Chart ──
+  var rawScores = {{ alignment_scores | tojson }};
+  var labels = ['目的理解', '状況認識', 'リスク認知', '合意事項', '優先順位'];
+
+  var scores = [];
+  for (var i = 1; i <= 5; i++) {
+    scores.push(rawScores[String(i)] || rawScores['dim_' + i] || 0);
+  }
+
+  var svg = document.getElementById('radar-chart');
+  if (!svg) return;
+
+  var n = 5, cx = 150, cy = 150, maxR = 105;
+
+  function pt(index, radius) {
+    var a = (Math.PI * 2 * index / n) - Math.PI / 2;
+    return { x: cx + radius * Math.cos(a), y: cy + radius * Math.sin(a) };
+  }
+
+  function poly(points, fill, stroke, sw) {
+    var p = document.createElementNS('http://www.w3.org/2000/svg', 'polygon');
+    p.setAttribute('points', points.map(function(v) { return v.x + ',' + v.y; }).join(' '));
+    p.setAttribute('fill', fill);
+    p.setAttribute('stroke', stroke);
+    p.setAttribute('stroke-width', sw);
+    p.setAttribute('stroke-linejoin', 'round');
+    return p;
+  }
+
+  // Grid
+  [0.25, 0.5, 0.75, 1.0].forEach(function(level) {
+    var pts = [];
+    for (var i = 0; i < n; i++) pts.push(pt(i, maxR * level));
+    svg.appendChild(poly(pts, 'none', '#EDE9E3', '1'));
+  });
+
+  // Axes
+  for (var i = 0; i < n; i++) {
+    var p = pt(i, maxR);
+    var line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+    line.setAttribute('x1', cx); line.setAttribute('y1', cy);
+    line.setAttribute('x2', p.x); line.setAttribute('y2', p.y);
+    line.setAttribute('stroke', '#EDE9E3'); line.setAttribute('stroke-width', '1');
+    svg.appendChild(line);
+  }
+
+  // Data polygon
+  var dataPts = scores.map(function(s, i) { return pt(i, maxR * s); });
+  var dataPoly = poly(dataPts, 'rgba(13,148,136,0.1)', '#0D9488', '2');
+  dataPoly.style.opacity = '0';
+  dataPoly.style.transition = 'opacity 0.6s ease-out 0.3s';
+  svg.appendChild(dataPoly);
+  requestAnimationFrame(function() { dataPoly.style.opacity = '1'; });
+
+  // Data vertices
+  scores.forEach(function(s, i) {
+    var p = pt(i, maxR * s);
+    var c = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+    c.setAttribute('cx', p.x); c.setAttribute('cy', p.y); c.setAttribute('r', '4.5');
+    c.setAttribute('stroke', 'white'); c.setAttribute('stroke-width', '2.5');
+    c.setAttribute('fill', s < 0.5 ? '#DC2626' : s < 0.7 ? '#D97706' : '#0D9488');
+    c.style.opacity = '0';
+    c.style.transition = 'opacity 0.3s ease-out ' + (0.5 + i * 0.08) + 's';
+    svg.appendChild(c);
+    requestAnimationFrame(function() { c.style.opacity = '1'; });
+  });
+
+  // Labels
+  labels.forEach(function(label, i) {
+    var p = pt(i, maxR + 30);
+    var txt = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+    txt.setAttribute('x', p.x); txt.setAttribute('y', p.y + 2);
+    txt.setAttribute('text-anchor', 'middle');
+    txt.setAttribute('dominant-baseline', 'central');
+    txt.setAttribute('class', 'radar-label');
+    txt.textContent = label;
+    svg.appendChild(txt);
+
+    // Score percentage near vertex
+    var sp = pt(i, maxR * scores[i]);
+    var offsetX = (sp.x - cx) * 0.22;
+    var offsetY = (sp.y - cy) * 0.22;
+    var scoreTxt = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+    scoreTxt.setAttribute('x', sp.x + offsetX);
+    scoreTxt.setAttribute('y', sp.y + offsetY);
+    scoreTxt.setAttribute('text-anchor', 'middle');
+    scoreTxt.setAttribute('dominant-baseline', 'central');
+    scoreTxt.setAttribute('style', "font-family:'JetBrains Mono';font-size:9px;font-weight:500;fill:" + (scores[i] < 0.5 ? '#DC2626' : scores[i] < 0.7 ? '#D97706' : '#0D9488'));
+    scoreTxt.textContent = Math.round(scores[i] * 100) + '%';
+    scoreTxt.style.opacity = '0';
+    scoreTxt.style.transition = 'opacity 0.3s ease-out ' + (0.7 + i * 0.08) + 's';
+    svg.appendChild(scoreTxt);
+    requestAnimationFrame(function() { scoreTxt.style.opacity = '1'; });
+  });
+});
+</script>
+{% endblock %}

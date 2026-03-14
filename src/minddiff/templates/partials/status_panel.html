@@ -1,0 +1,25 @@
+<div class="grid grid-cols-2 sm:grid-cols-3 gap-2.5">
+  {% for s in statuses %}
+  <div class="flex items-center gap-3 p-3 rounded-lg border anim-fade-in
+    {% if s.complete %}bg-align-surface border-align/15{% else %}bg-white border-surface-border{% endif %}"
+    style="animation-delay: {{ loop.index0 * 0.04 }}s">
+    <div class="w-7 h-7 rounded-full flex items-center justify-center text-xs font-mono font-medium shrink-0
+      {% if s.complete %}bg-align text-white{% else %}bg-surface-dim text-brand-muted{% endif %}">
+      {% if s.complete %}
+      <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="3">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/>
+      </svg>
+      {% else %}
+      {{ s.submitted }}
+      {% endif %}
+    </div>
+    <div class="min-w-0">
+      <div class="text-sm font-medium truncate text-brand">{{ s.display_name }}</div>
+      <div class="text-[11px] font-mono
+        {% if s.complete %}text-align{% else %}text-brand-muted{% endif %}">
+        {% if s.complete %}提出済み{% else %}{{ s.submitted }}/5{% endif %}
+      </div>
+    </div>
+  </div>
+  {% endfor %}
+</div>
