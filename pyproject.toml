@@ -2,6 +2,7 @@
 name = "minddiff"
 version = "0.1.0"
 description = "Team mental model diff tool — visualize cognitive gaps with GenAI"
+license = "MIT"
 requires-python = ">=3.11"
 dependencies = [
     "fastapi>=0.115",
