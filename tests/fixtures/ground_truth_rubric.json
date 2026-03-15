@@ -1,0 +1,47 @@
+{
+  "_description": "Human-labeled ground truth rubric for sample_responses.json (3 members × 5 dimensions). Each field is the correct value a well-calibrated rubric should return.",
+  "_labeler": "kiwamu.sato",
+  "_date": "2026-03-15",
+  "1": {
+    "_rationale": "全員Q1リリース/機能Xで一致（common core あり）。ただしM2「品質は後から」vs M3「本番品質前提」で品質基準が競合。MVPの定義も分かれる。",
+    "has_common_core": true,
+    "has_competing_goals": true,
+    "strong_evidence_count": 2,
+    "mention_agreement_ratio": "3/3",
+    "_has_high_confidence_divergence": "deterministic: computed from divergences[].confidence"
+  },
+  "2": {
+    "_rationale": "バックエンド完了は全員一致。フロント進捗はM1「50%遅れ」/M2「まあまあ」/M3「設計見直し」で3者3様。テスト着手もM2だけ「書き始めた」。",
+    "has_common_core": true,
+    "has_competing_goals": false,
+    "strong_evidence_count": 2,
+    "mention_agreement_ratio": "1/3",
+    "_has_high_confidence_divergence": "deterministic: computed from divergences[].confidence"
+  },
+  "3": {
+    "_rationale": "外部APIリスクはM1+M3が共有、スケジュールはM1+M2が共有。パフォーマンス要件はM3のみ、フロント設計はM3のみ、チーム疲弊はM1のみ。競合する目標ではなく、認識範囲の差。",
+    "has_common_core": true,
+    "has_competing_goals": false,
+    "strong_evidence_count": 2,
+    "mention_agreement_ratio": "2/3",
+    "_has_high_confidence_divergence": "deterministic: computed from divergences[].confidence"
+  },
+  "4": {
+    "_rationale": "APIスキーマv2は全員言及（M3は「確定したはず」とやや弱い）。デプロイフローはM1「CI/CD確定」vs M3「未確認」で事実認識が矛盾。木曜リリースはM1+M2のみ。",
+    "has_common_core": true,
+    "has_competing_goals": false,
+    "strong_evidence_count": 1,
+    "mention_agreement_ratio": "2/3",
+    "_has_high_confidence_divergence": "deterministic: computed from divergences[].confidence"
+  },
+  "5": {
+    "_rationale": "個人の優先順位が全員異なる（報告/API実装/設計レビュー）。チーム優先順位も全員異なる（フロント加速/テスト方針/品質基準合意）。共通の核がない。M1とM3でフロントに言及するが方向性が異なる（加速 vs 設計見直し）。",
+    "has_common_core": false,
+    "has_competing_goals": true,
+    "strong_evidence_count": 3,
+    "mention_agreement_ratio": "1/3",
+    "_has_high_confidence_divergence": "deterministic: computed from divergences[].confidence",
+    "personal_agreement_ratio": "0/3",
+    "team_agreement_ratio": "0/3"
+  }
+}
